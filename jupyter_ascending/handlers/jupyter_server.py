@@ -13,7 +13,8 @@ from requests.exceptions import ConnectionError
 
 from jupyter_ascending._environment import EXECUTE_HOST_LOCATION
 from jupyter_ascending._environment import EXECUTE_HOST_URL
-from jupyter_ascending._environment import SYNC_EXTENSION
+from jupyter_ascending._environment import PY_EXTENSION
+from jupyter_ascending._environment import NB_EXTENSION
 from jupyter_ascending.errors import UnableToFindNotebookException
 from jupyter_ascending.functional import get_matching_tail_tokens
 from jupyter_ascending.handlers import ServerMethods
@@ -46,7 +47,9 @@ def register_notebook_server(notebook_path: str, port_number: int) -> None:
 
 
 @multiplexer_methods.add
-def perform_notebook_request(notebook_path: str, command_name: str, data: Dict[str, Any]) -> Optional[Dict]:
+def perform_notebook_request(
+    notebook_path: str, command_name: str, data: Dict[str, Any]
+) -> Optional[Dict]:
     J_LOGGER.debug("Performing notebook request... ")
 
     try:
@@ -60,11 +63,17 @@ def perform_notebook_request(notebook_path: str, command_name: str, data: Dict[s
     return None
 
 
-JupyterServerRequestHandler = generate_request_handler("JupyterServer", multiplexer_methods)
+JupyterServerRequestHandler = generate_request_handler(
+    "JupyterServer", multiplexer_methods
+)
 
 
 def register_server(notebook_path: str, port_number: int) -> None:
-    J_LOGGER.info("Registering notebook {notebook} on port {port}", notebook=notebook_path, port=port_number)
+    J_LOGGER.info(
+        "Registering notebook {notebook} on port {port}",
+        notebook=notebook_path,
+        port=port_number,
+    )
 
     _REGISTERED_SERVERS[notebook_path] = port_number
 
@@ -73,7 +82,9 @@ def register_server(notebook_path: str, port_number: int) -> None:
 
 def get_server_for_notebook(notebook_str: str) -> Optional[str]:
     # Normalize to notebook path
-    notebook_str = notebook_str.replace(f".{SYNC_EXTENSION}.py", f".{SYNC_EXTENSION}.ipynb")
+    py_extension = f".{PY_EXTENSION}.py" if PY_EXTENSION else ".py"
+    nb_extension = f".{NB_EXTENSION}.py" if NB_EXTENSION else ".ipynb"
+    notebook_str = notebook_str.replace(py_extension, nb_extension)
     J_LOGGER.debug("Finding server for notebook_str, script_path: {}", notebook_str)
 
     notebook_path = Path(notebook_str)
@@ -93,13 +104,17 @@ def get_server_for_notebook(notebook_str: str) -> Optional[str]:
          -> 0
 
         """
-        return len(get_matching_tail_tokens(notebook_path.parts, Path(registered_name).parts))
+        return len(
+            get_matching_tail_tokens(notebook_path.parts, Path(registered_name).parts)
+        )
 
     score_by_name = {x: get_score_for_name(x) for x in _REGISTERED_SERVERS.keys()}
     max_score = max(score_by_name.values())
 
     if max_score <= 0:
-        raise UnableToFindNotebookException(f"Could not find server for notebook_str: {notebook_str}")
+        raise UnableToFindNotebookException(
+            f"Could not find server for notebook_str: {notebook_str}"
+        )
 
     # Only found one reasonable notebook.
     best_scores = [k for k, v in score_by_name.items() if v == max_score]
@@ -110,7 +125,9 @@ def get_server_for_notebook(notebook_str: str) -> Optional[str]:
         J_LOGGER.debug("Found server at port {}", notebook_port)
         return _make_url(notebook_port)
     else:
-        raise UnableToFindNotebookException(f"Could not find server for notebook_str: {notebook_str}")
+        raise UnableToFindNotebookException(
+            f"Could not find server for notebook_str: {notebook_str}"
+        )
 
 
 def request_notebook_command(json_request: GenericJsonRequest):
@@ -130,9 +147,13 @@ def request_notebook_command(json_request: GenericJsonRequest):
             raise Exception(f"Failed to complete request. {result.data}")
 
     except ConnectionError as e:
-        J_LOGGER.error(f"Unable to connect to server. Perhaps notebook is not running? {e}")
+        J_LOGGER.error(
+            f"Unable to connect to server. Perhaps notebook is not running? {e}"
+        )
     except ReceivedNon2xxResponseError as e:
-        J_LOGGER.error(f"Unable to process request. Perhaps something else is running on this port? {e}")
+        J_LOGGER.error(
+            f"Unable to process request. Perhaps something else is running on this port? {e}"
+        )
 
 
 def start_server_in_thread():
@@ -140,11 +161,15 @@ def start_server_in_thread():
         server_executor = HTTPServer(EXECUTE_HOST_LOCATION, JupyterServerRequestHandler)
     except OSError:
         print(f"It appears you already are using {EXECUTE_HOST_LOCATION}")
-        print("Use the environment variable: 'JUPYTER_ASCENDING_EXECUTE_PORT' to set a new port")
+        print(
+            "Use the environment variable: 'JUPYTER_ASCENDING_EXECUTE_PORT' to set a new port"
+        )
 
         return
 
-    server_executor_thread = threading.Thread(target=server_executor.serve_forever, args=tuple())
+    server_executor_thread = threading.Thread(
+        target=server_executor.serve_forever, args=tuple()
+    )
     server_executor_thread.start()
 
     J_LOGGER.info("Successfully started multiplexer server")

@@ -13,4 +13,5 @@ SHOW_TO_STDOUT = os.getenv("JUPYTER_ASCENDING_SHOW_TO_STDOUT", False)
 IS_LOGGING_ENABLED = os.getenv("JUPYTER_ASCENDING_IS_LOGGING_ENABLED", False)
 # TODO: it would be great for this to be an environment variable... but unfortunately we need to know the value
 #  on the javascript side as well, and I'm not sure how to get this value over there easily. Would love help!
-SYNC_EXTENSION = "sync"
+PY_EXTENSION = os.getenv("JUPYTER_ASCENDING_PY_EXTENSION", "sync")
+NB_EXTENSION = os.getenv("JUPYTER_ASCENDING_NB_EXTENSION)", None)
